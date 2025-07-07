@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Travelling Salesman Problem</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map { height: 500px; margin-top: 20px; border: 1px solid #ccc; }
+        img { max-width: 100%; border: 1px solid #ccc; margin-top: 10px; }
+        body { padding: 30px; background: #f5f5f5; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="mb-4">Travelling Salesman Problem</h1>
+
+    <div class="mb-3">
+        <label>Nhập địa điểm (1 dòng 1 điểm, VD: Hà Nội hoặc A 1 2):</label>
+        <textarea id="city_data" class="form-control" rows="6">
+
+        </textarea>
+    </div>
+
+    <div class="mb-3">
+        <label>Chọn điểm bắt đầu:</label>
+        <select id="start_city" class="form-select"></select>
+    </div>
+
+    <div class="mb-3">
+        <label>Chọn phương tiện di chuyển:</label>
+        <select id="mode" class="form-select">
+            <option value="car">Ô tô</option>
+            <option value="bicycle">Xe đạp</option>
+            <option value="pedestrian">Đi bộ</option>
+        </select>
+    </div>
+
+    <button class="btn btn-primary" onclick="solveTSP()">Thực hiện</button>
+
+    <div id="result" class="mt-4"></div>
+    <div id="map"></div>
+</div>
+
+<script>
+    let map, routeLayer, markers = [];
+
+    function initMap() {
+        map = L.map('map').setView([10.7769, 106.70098], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    }
+
+    async function solveTSP() {
+        const lines = document.getElementById("city_data").value.trim().split("\n");
+        const coords = {}; lines.forEach(l => coords[l.trim()] = []);
+        const startCity = document.getElementById("start_city").value;
+        const mode = document.getElementById("mode").value;
+
+        const res = await fetch("/api/solve", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ coords, start_city: startCity, mode: mode })
+        });
+
+        const result = await res.json();
+
+        document.getElementById("result").innerHTML = `
+            <div class="alert alert-info">
+                <b>Đường đi:</b> ${result.path.join(" → ")}<br>
+                <b>Tổng quãng đường:</b> ${result.cost} km
+            </div>
+            <img src="${result.img}?t=${Date.now()}" class="img-fluid" alt="TSP Animation">
+        `;
+
+        if (routeLayer) map.removeLayer(routeLayer);
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+
+        const coordsMap = result.coords;
+        for (const city in coordsMap) {
+            const latlng = coordsMap[city];
+            const marker = L.marker([latlng[0], latlng[1]]).addTo(map).bindPopup(city);
+            markers.push(marker);
+        }
+
+        const bounds = L.latLngBounds(markers.map(m => m.getLatLng()));
+        if (bounds.isValid()) map.fitBounds(bounds);
+    }
+
+    function updateDropdown() {
+        const lines = document.getElementById("city_data").value.trim().split("\n");
+        const select = document.getElementById("start_city");
+        const oldValue = select.value;
+        select.innerHTML = "";
+        lines.forEach(line => {
+            const option = document.createElement("option");
+            option.value = line.trim();
+            option.text = line.trim();
+            if (line.trim() === oldValue) option.selected = true;
+            select.appendChild(option);
+        });
+    }
+
+    window.onload = () => {
+        initMap();
+        updateDropdown();
+        document.getElementById("city_data").addEventListener("input", updateDropdown);
+    };
+</script>
+</body>
+</html>
