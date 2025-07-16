@@ -2,9 +2,7 @@ def tsp_solver(cities, distances, start=None):
     n = len(cities)
     best_path = []
     best_cost = float('inf')
-
     starts = [start] if start is not None else list(range(n))
-
     def dfs(path, cost):
         nonlocal best_path, best_cost
         if len(path) == n:
@@ -18,8 +16,7 @@ def tsp_solver(cities, distances, start=None):
                 new_cost = cost + distances[path[-1]][i]
                 if new_cost < best_cost:
                     dfs(path + [i], new_cost)
-
     for s in starts:
         dfs([s], 0)
-
     return best_path, best_cost
+
