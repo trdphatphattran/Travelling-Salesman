@@ -3,4 +3,4 @@ matplotlib
 openrouteservice
 python-dotenv
 geojson
-matplotlibpillow
+pillow
